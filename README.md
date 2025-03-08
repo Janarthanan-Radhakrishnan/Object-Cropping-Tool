@@ -36,7 +36,7 @@ cd automatic-object-cropping-tool
 
 
 
-## 📚 Important Instructions
+### 📚 Important Instructions
 
 ### ✅ File Naming Convention
 - **Image and annotation file names must match**.
