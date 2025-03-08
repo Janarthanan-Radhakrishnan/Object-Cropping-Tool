@@ -1,77 +1,57 @@
 import streamlit as st
 import os
-import tempfile
 import zipfile
-from tkinter import Tk, filedialog
+import shutil
 from image_cropper import ImageCropper
 
-# Streamlit app title
-st.title("Automatic Object Cropping Tool")
+def save_uploaded_file(uploaded_file, folder):
+    file_path = os.path.join(folder, uploaded_file.name)
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    return file_path
 
-# Function to open folder selection dialog
-def select_folder(title="Select Folder"):
-    root = Tk()
-    root.withdraw()  # Hide the root window
-    root.attributes('-topmost', True)  # Bring the dialog to the front
-    folder_path = filedialog.askdirectory(title=title)
-    root.destroy()
-    return folder_path
+def extract_zip(zip_path, extract_to):
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(extract_to)
 
-# Input folder selection
-if st.button("Select Input Folder"):
-    input_folder = select_folder(title="Select Input Folder")
-    if input_folder:
-        st.session_state.input_folder = input_folder
-        st.success(f"Input folder selected: {input_folder}")
+def zip_output_folder(output_folder, zip_filename):
+    shutil.make_archive(zip_filename, 'zip', output_folder)
+    return zip_filename + ".zip"
 
-# Output folder selection
-if st.button("Select Output Folder"):
-    output_folder = select_folder(title="Select Output Folder")
-    if output_folder:
-        st.session_state.output_folder = output_folder
-        st.success(f"Output folder selected: {output_folder}")
+st.title("Automatic Image Cropping Tool")
 
-# Display selected folders
-if "input_folder" in st.session_state:
-    st.write(f"**Input Folder:** {st.session_state.input_folder}")
-if "output_folder" in st.session_state:
-    st.write(f"**Output Folder:** {st.session_state.output_folder}")
+# Create directories
+UPLOAD_FOLDER = "uploads"
+OUTPUT_FOLDER = "cropped_images"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-def find_label_format(folder):
-    """Detect annotation format from files in folder"""
-    txt_labels = [f for f in os.listdir(folder) if f.endswith(".txt")]
-    xml_labels = [f for f in os.listdir(folder) if f.endswith(".xml")]
-    json_labels = [f for f in os.listdir(folder) if f.endswith(".json")]
+# Upload ZIP or multiple files
+uploaded_files = st.file_uploader("Upload images and annotation files (ZIP or multiple files)",
+                                  accept_multiple_files=True, type=["zip", "jpg", "jpeg", "png", "txt", "xml", "json"])
 
-    if txt_labels:
-        return "yolo"
-    elif xml_labels:
-        return "pascal"
-    elif json_labels:
-        return "coco"
-    else:
-        return "unknown"
-
-if st.button("Crop Images"):
-    if "input_folder" not in st.session_state:
-        st.error("Please select an input folder!")
-    elif "output_folder" not in st.session_state:
-        st.error("Please select an output folder!")
-    else:
-        input_folder = st.session_state.input_folder
-        output_folder = st.session_state.output_folder
-
-        # Detect annotation format
-        detected_format = find_label_format(input_folder)
+if uploaded_files:
+    processing_folder = os.path.join(UPLOAD_FOLDER, "processing")
+    os.makedirs(processing_folder, exist_ok=True)
+    
+    for uploaded_file in uploaded_files:
+        file_path = save_uploaded_file(uploaded_file, processing_folder)
         
-        if detected_format == "unknown":
-            st.error("No valid annotation files found! Supported formats: YOLO, Pascal VOC, COCO")
-        else:
-            with st.spinner(f"Processing {detected_format.upper()} format..."):
-                try:
-                    cropper = ImageCropper(input_folder, output_folder)
-                    cropper.crop(detected_format)
-                    st.success(f"Successfully cropped images to {output_folder}")
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"Error during processing: {str(e)}")
+        # If ZIP file, extract it
+        if uploaded_file.name.endswith(".zip"):
+            extract_zip(file_path, processing_folder)
+            os.remove(file_path)  # Remove the ZIP after extraction
+    
+    st.success("Files uploaded and extracted successfully!")
+    
+    # Process images
+    cropper = ImageCropper(processing_folder, OUTPUT_FOLDER)
+    cropper.crop("yolo")  # Automatically detects YOLO, Pascal, or COCO
+    
+    # Zip and provide download link
+    zip_file = zip_output_folder(OUTPUT_FOLDER, "cropped_output")
+    
+    with open(zip_file, "rb") as f:
+        st.download_button("Download Cropped Images", f, file_name="cropped_images.zip", mime="application/zip")
+    
+    st.success("Cropping completed! Download your cropped images.")
