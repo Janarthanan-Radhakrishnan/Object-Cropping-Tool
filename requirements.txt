@@ -1,5 +1,5 @@
 streamlit==1.42.1
-opencv-python==4.11.0.86
+opencv-python-headless-4.11.0.86
 pillow==11.1.0
 numpy==2.1.1
 PyYAML==6.0.2
