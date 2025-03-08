@@ -29,12 +29,7 @@ A Python-based image cropping tool that automatically extracts objects from imag
 - OpenCV (`opencv-python-headless`)
 - Other dependencies listed in `requirements.txt`
 
-### 🔹 Clone the Repository
-```bash
-git clone https://github.com/Janarthanan-Radhakrishnan/automatic-object-cropping-tool.git
-cd automatic-object-cropping-tool
-
-
+---
 
 ### 📚 Important Instructions
 
